@@ -95,3 +95,22 @@ function multipropT2!(P_T2::AbstractVector{<:AbstractFloat}, P_T1::AbstractVecto
 end
 
 multipropT2(P_T1::AbstractVector{<:AbstractFloat}) = multipropT2!(similar(P_T1), P_T1)
+
+function multipropT1!(rng::AbstractRNG, pdist::GenericProposalDist, target::Distribution, params_old::AbstractVector, P_T1::AbstractVector{<:AbstractFloat}) # TODO include checks for input, optimize and write test
+    params_new = zeros(length(params_old), length(P_T1) - 1)
+    p_d = zeros(length(P_T1))
+    p_t = zeros(length(P_T1))
+    proposal_rand!(rng, pdist, params_new, params_old)
+    distribution_logpdf!(p_d[1], pdist, params_old, params_old)
+    distribution_logpdf!(p_d[2:end], pdist, params_new, params_old)
+    Distributions.logpdf!(p_t[1], target, params_old)
+    Distributions.logpdf!(p_t[2:end], target, params_new)
+    sum_log_d = sum_first_dim(p_d,1)
+    P_T1 .= p_t - p_d + sum_log_d
+    p_T1 ./=  sum_first_dim(P_T1,1)
+
+    P_T1
+end
+
+
+multipropT1(rng::AbstractRNG, pdist::GenericProposalDist, target::Distribution, params_old::AbstractVector, num_prop::Integer) = multipropT1!(rng, pdist, target, params_old, zeros(length(params_old, m + 1)))
