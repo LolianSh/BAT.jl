@@ -125,6 +125,13 @@ GenericProposalDist(d::Distribution{Multivariate}) = GenericProposalDist(d, bat_
 GenericProposalDist(D::Type{<:Distribution{Multivariate}}, n_params::Integer, args...) =
     GenericProposalDist(D, Float64, n_params, args...)
 
+############## LOLIAN TAMPERING
+
+GenericProposalDist(D::Type{<:Distribution{Univariate}}, n_params::Integer, args...) =
+    GenericProposalDist(D, Float64, n_params, args...)
+
+    ##########################
+
 
 Base.similar(q::GenericProposalDist, d::Distribution{Multivariate}) =
     GenericProposalDist(d, q.sampler_f)
