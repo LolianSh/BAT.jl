@@ -10,7 +10,7 @@ using Compat.Test
 
 
     pdist = GenericProposalDist(MvNormal([0., 1.], [1. .5; .5 2.]))
-    target = MvNormal([2., 1.], [1. .6; .6 8.])
+    target = BAT.MvDistDensity(MvNormal([2., 1.], [1. .6; .6 8.]))
     rng = MersenneTwister(8477)
     params_old = [1. , 2.]
     num_prop = 99
@@ -31,7 +31,7 @@ using Compat.Test
     @test_throws ArgumentError BAT.multiprop_transition!(P_T1, params_new, zeros(4))
 
     pdist = GenericProposalDist(MvNormal([0.], [1.]))
-    target = MvNormal([2.4], [.5])
+    target = BAT.MvDistDensity(MvNormal([2.4], [.5]))
     rng = MersenneTwister(8477)
     params_old = [1.]
     num_prop = 99
