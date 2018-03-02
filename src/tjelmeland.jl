@@ -95,19 +95,43 @@ end
 
 multipropT2(P_T1::AbstractVector{<:AbstractFloat}) = multipropT2!(similar(P_T1), P_T1)
 
-function multipropT1!(rng::AbstractRNG, pdist::GenericProposalDist, target::Distribution, params_old::AbstractVector, P_T1::AbstractVector{<:AbstractFloat}) # TODO include checks for input, optimize and write test
-    params_new = zeros(length(params_old), length(P_T1) - 1)
-    p_d = zeros(length(P_T1))
-    p_t = zeros(length(P_T1))
+function multipropT1!(rng::AbstractRNG, pdist::GenericProposalDist, target::Distribution, params_old::AbstractVector, params_new::AbstractMatrix, P_T1::AbstractVector{<:AbstractFloat}) # TODO include checks for input, optimize and write test
+    size(P_T1, 2) != 1 && throw(ArgumentError("The transition probability vector has wrong dimensions"))
+    len = length(P_T1)
+    size(params_new, 1) != size(params_old, 1) && throw(ArgumentError("The dimensions of the proposals are not correct"))
+    size(params_new, 2) != len && throw(ArgumentError("The number of proposals is not correct"))
+
+    #params_new = zeros(length(params_old), length(P_T1) - 1)
+    p_d = zeros(len)
+    p_t = zeros(len)
     proposal_rand!(rng, pdist, params_new, params_old)
-    params = cat(2, params_old, params_new)
-    distribution_logpdf!(p_d, pdist, params, params_old)
-    Distributions.logpdf!(p_t, target, params)
+    params_new[:, 1] .= params_old
+    #params = cat(2, params_old, params_new)
+    distribution_logpdf!(p_d, pdist, params_new, params_old)
+    Distributions.logpdf!(p_t, target, params_new)
     sum_log_d = sum_first_dim(p_d,1)
     P_T1 .= p_t - p_d + sum_log_d
     P_T1 ./=  sum_first_dim(P_T1,1)
 
-    P_T1
+    P_T1, params_new
 end
 
-multipropT1(rng::AbstractRNG, pdist::GenericProposalDist, target::Distribution, params_old::AbstractVector, num_prop::Integer) = multipropT1!(rng, pdist, target, params_old, zeros(num_prop + 1))
+multipropT1(rng::AbstractRNG, pdist::GenericProposalDist, target::Distribution, params_old::AbstractVector, num_prop::Integer) = multipropT1!(rng, pdist, target, params_old, zeros(eltype(params_old), size(params_old, 1), num_prop + 1), zeros(num_prop + 1))
+
+
+function multiprop_transition!(P_T::AbstractVector{<:AbstractFloat}, params_new::AbstractMatrix, position::AbstractVector)
+    size(position, 1) != size(params_new, 1) && throw(ArgumentError("The dimension of the new position vector is inconsistent with the data provided"))
+    length(P_T) != size(params_new, 2) && throw(ArgumentError("The number of points provided is inconsitent with the number of proposals"))
+
+    cumsum!(P_T, P_T, 1)
+    prob = Distributions.Uniform()
+
+    pos_ind = findfirst(x -> x >= prob, P_T1)
+
+    position .= params[:, pos_ind]
+
+    position
+
+end
+
+multiprop_transition(P_T::AbstractVector{<:AbstractFloat}, params_new::AbstractMatrix) = multiprop_transition!(P_T::AbstractVector{<:AbstractFloat}, params_new::AbstractMatrix, zeros(size(params, 1)))

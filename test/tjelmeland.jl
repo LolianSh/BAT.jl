@@ -13,18 +13,45 @@ using Compat.Test
     target = MvNormal([2., 1.], [1. .6; .6 8.])
     rng = MersenneTwister(8477)
     params_old = [1. , 2.]
-    P_T1 = BAT.multipropT1(rng, pdist, target, params_old, 100)
+    num_prop = 99
+    #params_new = zeros(2,100)
+    #P_T1 = zeros(100)
+    #BAT.multipropT1!(rng, pdist, target, params_old, params_new, P_T1)
+    P_T1, params_new = BAT.multipropT1(rng, pdist, target, params_old, num_prop)
     @test sum(P_T1) ≈ 1.
     @test !any(x -> x < 0, P_T1)
+    @test params_new[:,1] ≈ params_old
+
+    params_new1 = zeros(2,190)
+    params_new2 = zeros(3,100)
+    P_T1_1 = zeros(100)
+    @test_throws ArgumentError BAT.multipropT1!(rng, pdist, target, params_old, params_new1, P_T1_1)
+    @test_throws ArgumentError BAT.multipropT1!(rng, pdist, target, params_old, params_new2, P_T1_1)
+    @test_throws ArgumentError BAT.multiprop_transition!(P_T1, params_new1, params_old)
+    @test_throws ArgumentError BAT.multiprop_transition!(P_T1, params_new, zeros(4))
 
     pdist = GenericProposalDist(MvNormal([0.], [1.]))
     target = MvNormal([2.4], [.5])
     rng = MersenneTwister(8477)
     params_old = [1.]
-    P_T1 = BAT.multipropT1(rng, pdist, target, params_old, 100)
+    num_prop = 99
+    #params_new = zeros(1, 100)
+    #P_T1 = zeros(100)
+    #BAT.multipropT1!(rng, pdist, target, params_old, params_new, P_T1)
+    P_T1, params_new = BAT.multipropT1(rng, pdist, target, params_old, num_prop)
     @test sum(P_T1) ≈ 1.
     @test !any(x -> x < 0, P_T1)
+    @test params_new[:,1] ≈ params_old
+
+    params_new1 = zeros(1,190)
+    params_new2 = zeros(3,100)
+    P_T1_1 = zeros(100)
+    @test_throws ArgumentError BAT.multipropT1!(rng, pdist, target, params_old, params_new1, P_T1_1)
+    @test_throws ArgumentError BAT.multipropT1!(rng, pdist, target, params_old, params_new2, P_T1_1)
+    @test_throws ArgumentError BAT.multiprop_transition!(P_T1, params_new1, params_old)
+    @test_throws ArgumentError BAT.multiprop_transition!(P_T1, params_new, zeros(4))
 
     @test_throws ArgumentError BAT.multipropT2([-0.1, 0.1])
     @test_throws ArgumentError BAT.multipropT2([0.1, 0.8])
+
 end
