@@ -95,6 +95,8 @@ end
 
 multipropT2(P_T1::AbstractVector{<:AbstractFloat}) = multipropT2!(similar(P_T1), P_T1)
 
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
 function multipropT1!(rng::AbstractRNG, pdist::GenericProposalDist, target::AbstractDensity, all_params::AbstractMatrix{<:Real}, all_logdensity_values::Vector{<:Real}, proposed_params::AbstractMatrix, P_T1::AbstractVector{<:AbstractFloat}) # TODO include checks for input, optimize and write test
     indices(all_params, 2) != indices(all_logdensity_values, 1) && throw(ArgumentError("Number of parameter sets doesn't match number of log(density) values"))
     indices(all_params, 2) != indices(P_T1, 1) && throw(ArgumentError("Number of parameter sets doesn't match size of P_T1"))
@@ -137,6 +139,27 @@ function multipropT1!(rng::AbstractRNG, pdist::GenericProposalDist, target::Abst
 
     P_T1_inbounds = similar(P_T1, 1 + n_proposals_inbounds)  # Memory allocation
 
+=======
+=======
+>>>>>>> Stashed changes
+function multipropT1!(rng::AbstractRNG, pdist::GenericProposalDist, target::AbstractDensity, params_old::AbstractVector, params_new::AbstractMatrix, P_T1::AbstractVector{<:AbstractFloat}) # TODO include checks for input, optimize and write test
+    size(P_T1, 2) != 1 && throw(ArgumentError("The transition probability vector has wrong dimensions"))
+    len = length(P_T1)
+    size(params_new, 1) != size(params_old, 1) && throw(ArgumentError("The dimensions of the proposals are not correct"))
+    size(params_new, 2) != len && throw(ArgumentError("The number of proposals is not correct"))
+
+    #params_new = zeros(length(params_old), length(P_T1) - 1)
+    p_d = zeros(len)
+    p_t = zeros(len)
+    proposal_rand!(rng, pdist, params_new, params_old)
+    params_new[:, 1] .= params_old
+    #params = cat(2, params_old, params_new)
+    distribution_logpdf!(p_d, pdist, params_new, params_old)
+    density_logval!(p_t, target, params_new)
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
     sum_log_d = sum_first_dim(p_d,1)
     P_T1_inbounds .= p_t - p_d + sum_log_d
     P_T1_inbounds .*=  inv(sum_first_dim(P_T1_inbounds,1))
@@ -146,7 +169,15 @@ function multipropT1!(rng::AbstractRNG, pdist::GenericProposalDist, target::Abst
     # P_T1, proposed_params  ....
 end
 
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
 multipropT1(rng::AbstractRNG, pdist::GenericProposalDist, target::AbstractDensity, current_params::AbstractVector, num_prop::Integer) = multipropT1!(rng, pdist, target, current_params, zeros(eltype(current_params), size(current_params, 1), num_prop + 1), zeros(num_prop + 1))
+=======
+multipropT1(rng::AbstractRNG, pdist::GenericProposalDist, target::AbstractDensity, params_old::AbstractVector, num_prop::Integer) = multipropT1!(rng, pdist, target, params_old, zeros(eltype(params_old), size(params_old, 1), num_prop + 1), zeros(num_prop + 1))
+>>>>>>> Stashed changes
+=======
+multipropT1(rng::AbstractRNG, pdist::GenericProposalDist, target::AbstractDensity, params_old::AbstractVector, num_prop::Integer) = multipropT1!(rng, pdist, target, params_old, zeros(eltype(params_old), size(params_old, 1), num_prop + 1), zeros(num_prop + 1))
+>>>>>>> Stashed changes
 
 
 function multiprop_transition!(P_T::AbstractVector{<:AbstractFloat}, proposed_params::AbstractMatrix, position::AbstractVector)
