@@ -156,7 +156,7 @@ function multiprop_transition!(rng::AbstractRNG, P_T::AbstractVector{<:AbstractF
     indices(all_params_old, 2) != indices(all_params_new, 2) && throw(ArgumentError("Old and New have inconsistent number of columns"))
     sum_first_dim(P_T) !≈ 1. && throw(ArgumentError("The transition probabilities do not sum up to 1."))
 
-    cms = cumsum(P_T, 1)
+    cms = cumsum(P_T, 1)  # Memory allocation!
     prob = rand(rng)
 
     pos_ind = findfirst(x -> x >= prob, cms)
