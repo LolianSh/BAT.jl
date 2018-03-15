@@ -95,8 +95,8 @@ end
 
 multipropT2(P_T1::AbstractVector{<:AbstractFloat}) = multipropT2!(similar(P_T1), P_T1)
 
-function multi_propose!(rng::AbstractRNG, pdist::GenericProposalDist, target::AbstractDensity, all_params::AbstractMatrix{<:Real}, inbounds::AbstractMatrix{<:Bool}) # TODO include checks for input, optimize and write test
-
+function multi_propose!(rng::AbstractRNG, pdist::GenericProposalDist, target::AbstractDensity, all_params::AbstractMatrix{<:Real}, inbounds::BitVector) # TODO include checks for input, optimize and write test
+    indices(all_params, 2) != indices(inbounds, 1) && throw(ArgumentError("Number of parameter sets doesn't match number of inbound bools"))
     current_params = view(all_params, :, 1)  # memory allocation
     proposed_params = view(all_params, :, 2:end)  # memory allocation
 
@@ -118,7 +118,7 @@ function multi_propose!(rng::AbstractRNG, pdist::GenericProposalDist, target::Ab
 
 end
 
-function multipropT1!(rng::AbstractRNG, pdist::GenericProposalDist, target::AbstractDensity, all_params::AbstractMatrix{<:Real}, all_logdensity_values::Vector{<:Real}, inbounds::AbstractVector{<:Bool}, P_T1::AbstractVector{<:AbstractFloat}) # TODO include checks for input, optimize and write test
+function multipropT1!(rng::AbstractRNG, pdist::GenericProposalDist, target::AbstractDensity, all_params::AbstractMatrix{<:Real}, all_logdensity_values::Vector{<:Real}, inbounds::BitVector, P_T1::AbstractVector{<:AbstractFloat}) # TODO include checks for input, optimize and write test
     indices(all_params, 2) != indices(all_logdensity_values, 1) && throw(ArgumentError("Number of parameter sets doesn't match number of log(density) values"))
     indices(all_params, 2) != indices(P_T1, 1) && throw(ArgumentError("Number of parameter sets doesn't match size of P_T1"))
 
@@ -151,7 +151,7 @@ end
 
 function multiprop_transition!(rng::AbstractRNG, P_T::AbstractVector{<:AbstractFloat}, all_params_old::AbstractMatrix{<:Real}, all_params_new::AbstractMatrix{<:Real}, all_logdensity_values::Vector{<:Real}, inbounds::AbstractVector{<:Bool})
     indices(all_params_old, 2) != indices(all_logdensity_values, 1) && throw(ArgumentError("The dimension of the new position vector is inconsistent with the data provided"))
-    indices(all_params_old, 2) != indices(P_T, 1) && throw(ArgumentError("The number of points provided is inconsitent with the number of proposals"))
+    indices(all_params_old, 2) != indices(P_T, 1) && throw(ArgumentError("The number of points provided is inconsistent with the number of proposals"))
     indices(all_params_old, 1) != indices(all_params_new, 1) && throw(ArgumentError("Old and New have inconsistent number of rows"))
     indices(all_params_old, 2) != indices(all_params_new, 2) && throw(ArgumentError("Old and New have inconsistent number of columns"))
     sum_first_dim(P_T) !≈ 1. && throw(ArgumentError("The transition probabilities do not sum up to 1."))
@@ -160,8 +160,9 @@ function multiprop_transition!(rng::AbstractRNG, P_T::AbstractVector{<:AbstractF
     prob = rand(rng)
 
     pos_ind = findfirst(x -> x >= prob, cms)
-    inbounds[pos_ind] == false && throw(ArgumentError("Jumping to a point out of bounds"))
+    @assert inbounds[pos_ind]
 
+    #TODO temp array or new memory alloc??
     all_params_new[:, 1] = all_params_old[:, pos_ind]
     all_params_new[:, pos_ind] = all_params_old[:, 1]
 
