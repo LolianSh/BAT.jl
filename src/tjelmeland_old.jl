@@ -95,83 +95,73 @@ end
 
 multipropT2(P_T1::AbstractVector{<:AbstractFloat}) = multipropT2!(similar(P_T1), P_T1)
 
-function multi_propose!(rng::AbstractRNG, pdist::GenericProposalDist, target::AbstractDensity, all_params::AbstractMatrix{<:Real}, inbounds::AbstractMatrix{<:Bool}) # TODO include checks for input, optimize and write test
+function multipropT1!(rng::AbstractRNG, pdist::GenericProposalDist, target::AbstractDensity, all_params::AbstractMatrix{<:Real}, all_logdensity_values::Vector{<:Real}, proposed_params::AbstractMatrix, P_T1::AbstractVector{<:AbstractFloat}) # TODO include checks for input, optimize and write test
+    indices(all_params, 2) != indices(all_logdensity_values, 1) && throw(ArgumentError("Number of parameter sets doesn't match number of log(density) values"))
+    indices(all_params, 2) != indices(P_T1, 1) && throw(ArgumentError("Number of parameter sets doesn't match size of P_T1"))
 
     current_params = view(all_params, :, 1)  # memory allocation
     proposed_params = view(all_params, :, 2:end)  # memory allocation
+    current_logdensity_value = all_logdensity_values[1]
+    proposed_logdensity_values = view(all_logdensity_values, 2:end)  # memory allocation
 
     # Propose new parameters:
     proposal_rand!(rng, pdist, proposed_params, current_params)
     apply_bounds!(proposed_params, param_bounds(target), false)
 
-    inbounds .= false
-    inbounds[1] = true
     n_proposals = size(proposed_params, 2)
     n_proposals_inbounds = 0
-    proposal_idxs_inbounds_tmp = Vector{Int}(n_proposals)  # Memory allocation
+    proposal_idxs_inbounds_tmp = Vector{Int}(n)  # Memory allocation
     fill!(proposal_idxs_inbounds_tmp, 0)
     @inbounds for j in indices(proposed_params, 2)
         if proposed_params[:, j] in param_bounds(target)
-            inbounds[j+1] = true
+            n_proposals_inbounds += 1
+            proposal_idxs_inbounds_tmp[n_proposals_inbounds] = j
         end
     end
-
-end
-
-function multipropT1!(rng::AbstractRNG, pdist::GenericProposalDist, target::AbstractDensity, all_params::AbstractMatrix{<:Real}, all_logdensity_values::Vector{<:Real}, inbounds::AbstractVector{<:Bool}, P_T1::AbstractVector{<:AbstractFloat}) # TODO include checks for input, optimize and write test
-    indices(all_params, 2) != indices(all_logdensity_values, 1) && throw(ArgumentError("Number of parameter sets doesn't match number of log(density) values"))
-    indices(all_params, 2) != indices(P_T1, 1) && throw(ArgumentError("Number of parameter sets doesn't match size of P_T1"))
+    proposal_idxs_inbounds = proposal_idxs_inbounds_tmp[1:n_proposals_inbounds]  # Memory allocation
+    proposed_params_inbounds = proposed_params[:, proposal_idxs_inbounds]  # Memory allocation
 
     # Evaluate target density at new parameters:
-    proposed_logdensity_values = view(all_logdensity_values, 2:end)
-    fill!(proposed_logdensity_values, -Inf)
-    proposed_logdensity_values_inbounds = view(proposed_logdensity_values, inbounds[2:end])  # Memory allocation
+    proposed_logdensity_values_inbounds = similar(proposed_logdensity_values, n_proposals_inbounds)  # Memory allocation
     density_logval!(proposed_logdensity_values_inbounds, target, proposed_params_inbounds)
-    all_logdensity_values_inbounds = view(all_logdensity_values, inbounds)
+    fill!(proposed_logdensity_values, -Inf)
+    proposed_logdensity_values[proposal_idxs_inbounds] = proposed_logdensity_values_inbounds
 
-    all_params_inbounds = view(all_params, :, inbounds)
+    all_params_inbounds = similar(proposed_params_inbounds, size(proposed_params_inbounds, 1), 1 + size(proposed_params_inbounds, 2))  # Memory allocation
+    all_params_inbounds[:, 1] = current_params
+    all_params_inbounds[:, 2:end] = proposed_params_inbounds
 
     # ToDo: Optimize for symmetric proposals?
     p_d_inbounds = similar(all_logdensity_values, size(all_params_inbounds, 2), size(all_params_inbounds, 2))
-    @inbounds for j in indices(all_params_inbounds, 2)
-        distribution_logpdf!(view(p_d, :, j), pdist, all_params_inbounds, view(all_params_inbounds, :, j])  # Memory allocation due to view
-    end
+    distribution_logpdf!(view(p_d, :, j), pdist, all_params_inbounds, view(all_params_inbounds, :, j])  # Memory allocation due to view
 
-    P_T1_inbounds = view(P_T1, inbounds)  # Memory allocation
+    P_T1_inbounds = similar(P_T1, 1 + n_proposals_inbounds)  # Memory allocation
 
-    @inbounds for j in indices(P_T1_inbounds)
-        P_T1_inbounds[j] = exp(sum_first_dim(p_d_inbounds, j) - p_d_inbounds[j] + all_logdensity_values_inbounds[j])
-    end
-
+    sum_log_d = sum_first_dim(p_d,1)
+    P_T1_inbounds .= p_t - p_d + sum_log_d
     P_T1_inbounds .*=  inv(sum_first_dim(P_T1_inbounds,1))
-    P_T1[!inbounds] .= 0.0
+
+    .....
+
+    # P_T1, proposed_params  ....
+end
+
+multipropT1(rng::AbstractRNG, pdist::GenericProposalDist, target::AbstractDensity, current_params::AbstractVector, num_prop::Integer) = multipropT1!(rng, pdist, target, current_params, zeros(eltype(current_params), size(current_params, 1), num_prop + 1), zeros(num_prop + 1))
+
+
+function multiprop_transition!(P_T::AbstractVector{<:AbstractFloat}, proposed_params::AbstractMatrix, position::AbstractVector)
+    size(position, 1) != size(proposed_params, 1) && throw(ArgumentError("The dimension of the new position vector is inconsistent with the data provided"))
+    length(P_T) != size(proposed_params, 2) && throw(ArgumentError("The number of points provided is inconsitent with the number of proposals"))
+
+    cumsum!(P_T, P_T, 1)
+    prob = Distributions.Uniform()
+
+    pos_ind = findfirst(x -> x >= prob, P_T1)
+
+    position .= params[:, pos_ind]
+
+    position
 
 end
 
-
-function multiprop_transition!(rng::AbstractRNG, P_T::AbstractVector{<:AbstractFloat}, all_params_old::AbstractMatrix{<:Real}, all_params_new::AbstractMatrix{<:Real}, all_logdensity_values::Vector{<:Real}, inbounds::AbstractVector{<:Bool})
-    indices(all_params_old, 2) != indices(all_logdensity_values, 1) && throw(ArgumentError("The dimension of the new position vector is inconsistent with the data provided"))
-    indices(all_params_old, 2) != indices(P_T, 1) && throw(ArgumentError("The number of points provided is inconsitent with the number of proposals"))
-    indices(all_params_old, 1) != indices(all_params_new, 1) && throw(ArgumentError("Old and New have inconsistent number of rows"))
-    indices(all_params_old, 2) != indices(all_params_new, 2) && throw(ArgumentError("Old and New have inconsistent number of columns"))
-    sum_first_dim(P_T) !≈ 1. && throw(ArgumentError("The transition probabilities do not sum up to 1."))
-
-    cms = cumsum(P_T, 1)
-    prob = rand(rng)
-
-    pos_ind = findfirst(x -> x >= prob, cms)
-    inbounds[pos_ind] == false && throw(ArgumentError("Jumping to a point out of bounds"))
-
-    all_params_new[:, 1] = all_params_old[:, pos_ind]
-    all_params_new[:, pos_ind] = all_params_old[:, 1]
-
-    rest = setdiff(indices(all_params_old, 2),(1,pos_ind))
-
-    all_params_new[:, rest] = all_params_old[:, rest]
-    # TODO implement weighting scheme ... should I swap weights?? ... should I swap all_logdensity_values ??
-
-    all_params_new
-
-end
-
-multiprop_transition(rng::AbstractRNG, P_T::AbstractVector{<:AbstractFloat}, all_params_old::AbstractMatrix{<:Real}, all_logdensity_values::Vector{<:Real}, inbounds::AbstractVector{<:Bool}) = multiprop_transition!(rng::AbstractRNG, P_T, all_params_old, similar(all_params_old), all_logdensity_values, inbounds)
+multiprop_transition(P_T::AbstractVector{<:AbstractFloat}, proposed_params::AbstractMatrix) = multiprop_transition!(P_T::AbstractVector{<:AbstractFloat}, proposed_params::AbstractMatrix, zeros(size(params, 1)))
