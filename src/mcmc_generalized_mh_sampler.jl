@@ -214,7 +214,7 @@ function mcmc_step!(
     all_params = all_samples.params
     all_weights = all_samples.weights
     all_logdensity_values = all_samples.log_value
-    is_inbounds = Vector{Bool}(size(all_params, 2))  # Memory allocation!
+    is_inbounds = BitVector(size(all_params, 2))  # Memory allocation!
     P_T1 = Vector{eltype(all_logdensity_values)}(size(all_params, 2))  # Memory allocation!
     #!! multi_propose!(rng, pdist, target, all_params, is_inbounds::BitVector)
     #!! multipropT1!(rng, pdist, target, all_params, all_logdensity_values, is_inbounds::BitVector, P_T1)
