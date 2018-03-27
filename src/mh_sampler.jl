@@ -28,6 +28,18 @@ end
 
 export MetropolisHastings
 
+################### LOLIAN
+struct MultipropMetropolis{
+    Q<:ProposalDistSpec,
+    W<:Real,
+    WS<:MHWeightingScheme{W}
+} <: MCMCAlgorithm{AcceptRejectState}
+    q::Q
+    weighting_scheme::WS
+end
+
+
+###############
 MetropolisHastings(
     q::Q,
     weighting_scheme::WS

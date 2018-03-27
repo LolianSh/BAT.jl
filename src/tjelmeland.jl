@@ -97,6 +97,11 @@ multipropT2(P_T1::AbstractVector{<:AbstractFloat}) = multipropT2!(similar(P_T1),
 
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+
+#TODO pass bound and apply
+>>>>>>> Stashed changes
 function multipropT1!(rng::AbstractRNG, pdist::GenericProposalDist, target::AbstractDensity, all_params::AbstractMatrix{<:Real}, all_logdensity_values::Vector{<:Real}, proposed_params::AbstractMatrix, P_T1::AbstractVector{<:AbstractFloat}) # TODO include checks for input, optimize and write test
     indices(all_params, 2) != indices(all_logdensity_values, 1) && throw(ArgumentError("Number of parameter sets doesn't match number of log(density) values"))
     indices(all_params, 2) != indices(P_T1, 1) && throw(ArgumentError("Number of parameter sets doesn't match size of P_T1"))
@@ -139,6 +144,7 @@ function multipropT1!(rng::AbstractRNG, pdist::GenericProposalDist, target::Abst
 
     P_T1_inbounds = similar(P_T1, 1 + n_proposals_inbounds)  # Memory allocation
 
+<<<<<<< Updated upstream
 =======
 =======
 >>>>>>> Stashed changes
@@ -160,11 +166,15 @@ function multipropT1!(rng::AbstractRNG, pdist::GenericProposalDist, target::Abst
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
+=======
+
+>>>>>>> Stashed changes
     sum_log_d = sum_first_dim(p_d,1)
     P_T1_inbounds .= p_t - p_d + sum_log_d
     P_T1_inbounds .*=  inv(sum_first_dim(P_T1_inbounds,1))
 
     .....
+<<<<<<< Updated upstream
 
     # P_T1, proposed_params  ....
 end
@@ -180,6 +190,13 @@ multipropT1(rng::AbstractRNG, pdist::GenericProposalDist, target::AbstractDensit
 >>>>>>> Stashed changes
 
 
+=======
+end
+
+multipropT1(rng::AbstractRNG, pdist::GenericProposalDist, target::AbstractDensity, current_params::AbstractVector, num_prop::Integer) = multipropT1!(rng, pdist, target, current_params, zeros(eltype(current_params), size(current_params, 1), num_prop + 1), zeros(num_prop + 1))
+
+#TODO use rng in multiprop_transition, cumsum to a temp array,
+>>>>>>> Stashed changes
 function multiprop_transition!(P_T::AbstractVector{<:AbstractFloat}, proposed_params::AbstractMatrix, position::AbstractVector)
     size(position, 1) != size(proposed_params, 1) && throw(ArgumentError("The dimension of the new position vector is inconsistent with the data provided"))
     length(P_T) != size(proposed_params, 2) && throw(ArgumentError("The number of points provided is inconsitent with the number of proposals"))
