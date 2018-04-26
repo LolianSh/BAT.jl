@@ -140,7 +140,7 @@ function multipropT1!(rng::AbstractRNG, pdist::GenericProposalDist, target::Abst
     P_T1_inbounds = view(P_T1, is_inbounds)  # Memory allocation
 
     @inbounds for j in indices(P_T1_inbounds)
-        P_T1_inbounds[j] = exp(sum_first_dim(p_d_inbounds, j) - p_d_inbounds[j] + all_logdensity_values_inbounds[j])
+        P_T1_inbounds[j] = exp(sum_first_dim(p_d_inbounds, j) - p_d_inbounds[j, j] + all_logdensity_values_inbounds[j])
     end
 
     P_T1_inbounds .*=  inv(sum_first_dim(P_T1_inbounds,1))
