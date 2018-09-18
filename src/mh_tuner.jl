@@ -4,6 +4,7 @@
 const CovTunerCompatibleAlg = Union{
     MetropolisHastings,
     GeneralizedMetropolisHastings,
+    MultiTryMethod
 }
 
 

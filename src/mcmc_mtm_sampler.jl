@@ -294,7 +294,7 @@ function mcmc_step!(
     is_inbounds_1 = BitVector(size(help_params_1, 2))  # Memory allocation!
     is_inbounds_2 = BitVector(size(help_params_2, 2))  # Memory allocation!
 
-    mtm_multi_propose!(rng, pdist, target, view(params, :, 1), help_params_1, is_inbounds)
+    mtm_multi_propose!(rng, pdist, target, view(params, :, 1), help_params_1, is_inbounds_1)
     inbounds_idxs_1 = find(is_inbounds_1)  # Memory allocation!
     #@assert inbounds_idxs[mh_idx_current(inbounds_idxs)] == current_sample_idx
     #inbounds_idxs_proposed = inbounds_idxs[mh_idxs_proposed(inbounds_idxs)]  # Memory allocation!
@@ -310,9 +310,10 @@ function mcmc_step!(
 
     _mtm_weight_1!(help_weights_proposed_inbounds_1, pdist, view(params, :, 1), help_params_proposed_inbounds_1, help_logdensity_proposed_inbounds_1)
 
-    _select_candidate!(params, help_params_proposed_inbounds_1, logdensity, help_logdensity_proposed_inbounds_1, help_weights_proposed_inbounds_1)
+    _select_candidate!(rng, params, help_params_proposed_inbounds_1, logdensity, help_logdensity_proposed_inbounds_1, help_weights_proposed_inbounds_1)
 
-    mtm_multi_propose!(rng, pdist, target, view(params, :, 2), help_params_2, is_inbounds)
+    mtm_multi_propose!(rng, pdist, target, view(params, :, 2), help_params_2, is_inbounds_2)
+    help_params_2[:,1] .= params[:,1]
     inbounds_idxs_2 = find(is_inbounds_2)
 
     help_params_proposed_inbounds_2 = help_params_2[:, inbounds_idxs_2]
@@ -322,7 +323,10 @@ function mcmc_step!(
 
     _mtm_weight_1!(help_weights_proposed_inbounds_2, pdist, view(params, :, 2), help_params_proposed_inbounds_2, help_logdensity_proposed_inbounds_2)
 
-    p_accept = _MTM_accept_reject!(params, weights, help_weights_proposed_inbounds_1, help_weights_proposed_inbounds_2)
+    p_accept = _MTM_accept_reject!(rng, params, weights, help_weights_proposed_inbounds_1, help_weights_proposed_inbounds_2)
+
+    #println("first wave     $help_weights_proposed_inbounds_1")
+    #println("second wave     $help_weights_proposed_inbounds_2")
 
 
     if (weights[2] != 0.)
@@ -359,9 +363,9 @@ function mtm_multi_propose!(rng::AbstractRNG, pdist::GenericProposalDist, target
     n_proposals_inbounds = 0
     proposal_idxs_inbounds_tmp = Vector{Int}(n_proposals)  # Memory allocation
     fill!(proposal_idxs_inbounds_tmp, 0)
-    @inbounds for j in indices(proposed_params, 2)
-        if proposed_params[:, j] in param_bounds(target)
-            is_inbounds[j+1] = true
+    @inbounds for j in indices(params, 2)
+        if params[:, j] in param_bounds(target)
+            is_inbounds[j] = true
         end
     end
     nothing
@@ -381,24 +385,24 @@ function _mtm_weight_1!(mtm_W::AbstractVector{<:AbstractFloat}, pdist::GenericPr
     #mtmt_W[1] = 0.0
     mtm_W .-= maximum(mtm_W)
     mtm_W .= exp.(mtm_W)
-    normalize!(mtm_W, 1)
-    @assert sum(mtm_W) ≈ 1
-    @assert mtmt_W[1] ≈ 0
+    #n#normalize!(mtm_W, 1)
+    #@assert sum(mtm_W) ≈ 1
 
     mtm_W
 end
 
 
-function _select_candidate!(params::AbstractMatrix{<:Real}, help_params::AbstractMatrix{<:Real}, logdensity::Vector{<:Real}, help_logdensity::Vector{<:Real}, help_weight::Vector{<:Real})
+function _select_candidate!(rng::AbstractRNG, params::AbstractMatrix{<:Real}, help_params::AbstractMatrix{<:Real}, logdensity::Vector{<:Real}, help_logdensity::Vector{<:Real}, help_weight::Vector{<:Real})
     indices(params, 2) != indices(logdensity, 1) && throw(ArgumentError("Number of parameter sets doesn't match number of log(density) values"))
-    indices(params, 2) != 2 && throw(ArgumentError("Number of parameter is not 2"))
+    size(params, 2) != 2 && throw(ArgumentError("Number of parameter is not 2"))
     indices(help_params, 2) != indices(help_logdensity, 1) && throw(ArgumentError("Number of help_parameter sets doesn't match number of help_log(density) values"))
     indices(help_params, 2) != indices(help_weight, 1) && throw(ArgumentError("Number of help_parameter sets doesn't match number of help_weight values"))
 
-
+    norm = help_weight
+    normalize!(norm, 1)
     cum_help_weight = similar(help_weight)
     @assert firstindex(cum_help_weight) == firstindex(help_weight)
-    cumsum!(cum_help_weight, help_weight)
+    cumsum!(cum_help_weight, norm)
 
     threshold = rand(rng, eltype(cum_help_weight))
     accepted_sample_idx = searchsortedfirst(cum_help_weight, threshold)
@@ -409,21 +413,23 @@ function _select_candidate!(params::AbstractMatrix{<:Real}, help_params::Abstrac
 end
 
 
-function _MTM_accept_reject!(params::AbstractMatrix{<:Real}, weights::Vector{<:Real}, help_weights_1::Vector{<:Real}, help_weights_2::Vector{<:Real})
+function _MTM_accept_reject!(rng::AbstractRNG ,params::AbstractMatrix{<:Real}, weights::Vector{<:Real}, help_weights_1::Vector{<:Real}, help_weights_2::Vector{<:Real})
     indices(params, 2) != indices(weights, 1) && throw(ArgumentError("Number of parameter sets doesn't match number of weight values"))
-    indices(params, 2) != 2 && throw(ArgumentError("Number of parameter is not 2"))
+    size(params, 2) != 2 && throw(ArgumentError("Number of parameter is not 2"))
 
     weights[2] = 0.
-    firts_jump = sum(help_weights_1)
+    first_jump = sum(help_weights_1)
     second_jump = sum(help_weights_2)
 
-    p_accept = if fisrt_jump / second_jump > -Inf && fisrt_jump / second_jump < Inf
+    p_accept = if first_jump / second_jump > -Inf && first_jump / second_jump < Inf
         clamp(first_jump / second_jump, 0., 1.)
     else
         0.
     end
 
-    threshold = rand(rng, eltype(cum_help_weight))
+    #println("$p_accept")
+
+    threshold = rand(rng, eltype(weights))
 
     if p_accept >= threshold
         weights[2] = 1.

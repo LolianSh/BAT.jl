@@ -14,12 +14,12 @@ using JLD
 using BAT.Logging
 
 
-α_vec = collect(0.83:0.5:0.83)
+α_vec = collect(0.5:0.5:0.5)
 m_vec = collect(2:4:2)
 df_vec = collect(1.0:10.0:1.0)
 iter = collect(1:1:1)
 
-
+#println("????????????????? iter is $iter")
 
 #α_vec = collect(1:1:3)
 #m_vec = collect(1:5:16)
@@ -82,7 +82,7 @@ for i in indices(α_vec, 1)
 
                 println("------------------------alpha is $(α_vec[i]), m is $(m_vec[m]), df is $(df_vec[k]) and the iteration is $w")
                 #algorithm = GeneralizedMetropolisHastings(MvTDistProposalSpec(df_vec[k]), m_vec[m], true, 2)
-                algorithm = MultiTryMethod(MvTDistProposalSpec(1.0), 10, true)
+                algorithm = MultiTryMethod(MvTDistProposalSpec(30.0), 10, true)
 
                 lol = view(data_tuned, i, m, k, w, :)
 
