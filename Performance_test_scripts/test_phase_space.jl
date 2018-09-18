@@ -14,15 +14,17 @@ using JLD
 using BAT.Logging
 
 
-α_vec = collect(0.1:0.1:1.0)
-m_vec = collect(2:4:20)
+α_vec = collect(0.83:0.5:0.83)
+m_vec = collect(2:4:2)
 df_vec = collect(1.0:10.0:1.0)
 iter = collect(1:1:1)
+
+
 
 #α_vec = collect(1:1:3)
 #m_vec = collect(1:5:16)
 #df_vec = collect(1.0:10.0:11.0)
-#ter = collect(1:1:3)
+#iter = collect(1:1:3)
 
 data_mean = zeros(Float64, size(α_vec, 1), size(m_vec, 1), size(df_vec, 1), size(iter, 1), 2)
 data_cov = zeros(Float64, size(α_vec, 1), size(m_vec, 1), size(df_vec, 1), size(iter, 1), 2, 2)
@@ -79,7 +81,8 @@ for i in indices(α_vec, 1)
             for w in iter
 
                 println("------------------------alpha is $(α_vec[i]), m is $(m_vec[m]), df is $(df_vec[k]) and the iteration is $w")
-                algorithm = GeneralizedMetropolisHastings(MvTDistProposalSpec(df_vec[k]), m_vec[m], true, 2)
+                #algorithm = GeneralizedMetropolisHastings(MvTDistProposalSpec(df_vec[k]), m_vec[m], true, 2)
+                algorithm = MultiTryMethod(MvTDistProposalSpec(1.0), 10, true)
 
                 lol = view(data_tuned, i, m, k, w, :)
 

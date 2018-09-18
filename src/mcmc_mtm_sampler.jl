@@ -27,14 +27,15 @@ function MTMState(
     helpers_1 = ElasticArray{T}(npar, nproposals)
     helpers_2 = ElasticArray{T}(npar, nproposals)
     fill!(params, zero(T))
-    fill!(helpers, zero(T))
+    fill!(helpers_1, zero(T))
+    fill!(helpers_2, zero(T))
 
     helpers_2[:, 1] = current_sample.params
     params[:, 1] = current_sample.params
 
     log_value_params = Vector{T}(2)
     log_value_helpers_1 = Vector{T}(nproposals)
-    log_value_helpers_1 = Vector{T}(nproposals)
+    log_value_helpers_2 = Vector{T}(nproposals)
     fill!(log_value_params, NaN)
     fill!(log_value_helpers_1, NaN)
     fill!(log_value_helpers_2, NaN)
@@ -331,7 +332,7 @@ function mcmc_step!(
         sampleids[current_sample_idx + 1] = MCMCSampleID(chain.id, chain.cycle, nsteps(state), 2)
     end
 
-    eff_acceptratio_method = algorithm.eff_acceptratio_method
+    # eff_acceptratio_method = algorithm.eff_acceptratio_method
     state.eff_acceptratio_sum += p_accept
 
     callback(1, chain)
