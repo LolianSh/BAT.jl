@@ -308,7 +308,7 @@ function mcmc_step!(
 
     help_weights_proposed_inbounds_1 = help_weights_1[inbounds_idxs_1]
 
-    _mtm_weight_1!(help_weights_proposed_inbounds_1, pdist, view(params, :, 1), help_params_proposed_inbounds_1, help_logdensity_proposed_inbounds_1)
+    max_w_1 = _mtm_weight_1(help_weights_proposed_inbounds_1, pdist, view(params, :, 1), help_params_proposed_inbounds_1, help_logdensity_proposed_inbounds_1)
 
     _select_candidate!(rng, params, help_params_proposed_inbounds_1, logdensity, help_logdensity_proposed_inbounds_1, help_weights_proposed_inbounds_1)
 
@@ -321,13 +321,15 @@ function mcmc_step!(
     density_logval!(help_logdensity_proposed_inbounds_2, target, help_params_proposed_inbounds_2, exec_context)
     help_weights_proposed_inbounds_2 = help_weights_1[inbounds_idxs_2]
 
-    _mtm_weight_1!(help_weights_proposed_inbounds_2, pdist, view(params, :, 2), help_params_proposed_inbounds_2, help_logdensity_proposed_inbounds_2)
+    max_w_2 = _mtm_weight_1(help_weights_proposed_inbounds_2, pdist, view(params, :, 2), help_params_proposed_inbounds_2, help_logdensity_proposed_inbounds_2)
 
-    p_accept = _MTM_accept_reject!(rng, params, weights, help_weights_proposed_inbounds_1, help_weights_proposed_inbounds_2)
+    p_accept = _MTM_accept_reject!(rng, params, weights, help_weights_proposed_inbounds_1, help_weights_proposed_inbounds_2, max_w_1, max_w_2)
 
     #println("first wave     $help_weights_proposed_inbounds_1")
     #println("second wave     $help_weights_proposed_inbounds_2")
 
+    #println("$(weights[1])")
+    #normalize!(weights, 1)
 
     if (weights[2] != 0.)
         state.nsamples += 1
@@ -373,7 +375,7 @@ end
 
 
 
-function _mtm_weight_1!(mtm_W::AbstractVector{<:AbstractFloat}, pdist::GenericProposalDist, source::AbstractVector{<:Real}, params::AbstractMatrix{<:Real}, logdensity::Vector{<:Real}) # TODO include checks for input, optimize and write test
+function _mtm_weight_1(mtm_W::AbstractVector{<:AbstractFloat}, pdist::GenericProposalDist, source::AbstractVector{<:Real}, params::AbstractMatrix{<:Real}, logdensity::Vector{<:Real}) # TODO include checks for input, optimize and write test
     indices(params, 2) != indices(logdensity, 1) && throw(ArgumentError("Number of parameter sets doesn't match number of log(density) values"))
     indices(params, 2) != indices(mtm_W, 1) && throw(ArgumentError("Number of parameter sets doesn't match size of mtm_W"))
 
@@ -383,12 +385,33 @@ function _mtm_weight_1!(mtm_W::AbstractVector{<:AbstractFloat}, pdist::GenericPr
 
     mtm_W .+= logdensity .+ p_d
     #mtmt_W[1] = 0.0
-    mtm_W .-= maximum(mtm_W)
+    max_w = maximum(mtm_W)
+    mtm_W .-= max_w
     mtm_W .= exp.(mtm_W)
-    #n#normalize!(mtm_W, 1)
+    #normalize!(mtm_W, 1)
     #@assert sum(mtm_W) ≈ 1
 
-    mtm_W
+    max_w
+end
+
+
+function _mtm_weight_2(mtm_W::AbstractVector{<:AbstractFloat}, pdist::GenericProposalDist, source::AbstractVector{<:Real}, params::AbstractMatrix{<:Real}, logdensity::Vector{<:Real}) # TODO include checks for input, optimize and write test
+    indices(params, 2) != indices(logdensity, 1) && throw(ArgumentError("Number of parameter sets doesn't match number of log(density) values"))
+    indices(params, 2) != indices(mtm_W, 1) && throw(ArgumentError("Number of parameter sets doesn't match size of mtm_W"))
+
+    # ToDo: Optimize for symmetric proposals?
+    p_d = similar(logdensity, size(params, 2))
+    #distribution_logpdf!(p_d, pdist, params, source)  # Memory allocation due to view
+
+    mtm_W .+= logdensity #.+ p_d
+    #mtmt_W[1] = 0.0
+    max_w = maximum(mtm_W)
+    mtm_W .-= max_w
+    mtm_W .= exp.(mtm_W)
+    #normalize!(mtm_W, 1)
+    #@assert sum(mtm_W) ≈ 1
+
+    max_w
 end
 
 
@@ -413,16 +436,17 @@ function _select_candidate!(rng::AbstractRNG, params::AbstractMatrix{<:Real}, he
 end
 
 
-function _MTM_accept_reject!(rng::AbstractRNG ,params::AbstractMatrix{<:Real}, weights::Vector{<:Real}, help_weights_1::Vector{<:Real}, help_weights_2::Vector{<:Real})
+function _MTM_accept_reject!(rng::AbstractRNG ,params::AbstractMatrix{<:Real}, weights::Vector{<:Real}, help_weights_1::Vector{<:Real}, help_weights_2::Vector{<:Real}, max_w_1::Real, max_w_2::Real)
     indices(params, 2) != indices(weights, 1) && throw(ArgumentError("Number of parameter sets doesn't match number of weight values"))
     size(params, 2) != 2 && throw(ArgumentError("Number of parameter is not 2"))
 
     weights[2] = 0.
     first_jump = sum(help_weights_1)
     second_jump = sum(help_weights_2)
+    c = exp(max_w_1 - max_w_2)
 
-    p_accept = if first_jump / second_jump > -Inf && first_jump / second_jump < Inf
-        clamp(first_jump / second_jump, 0., 1.)
+    p_accept = if c * first_jump / second_jump > -Inf && first_jump / second_jump < Inf
+        clamp(c * first_jump / second_jump, 0., 1.)
     else
         0.
     end
