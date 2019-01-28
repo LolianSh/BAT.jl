@@ -264,5 +264,10 @@ end
 
 export UvTDistProposalSpec
 
-(ps::UvTDistProposalSpec)(T::Type{<:AbstractFloat}, n_params::Integer) =
-    GenericUvProposalDist(TDist(convert(T, ps.df)), fill(one(T), n_params))
+(ps::UvTDistProposalSpec)(T::Type{<:AbstractFloat}) =
+    GenericUvProposalDist(TDist(convert(T, ps.df)))
+
+function GenericUvProposalDist(::Type{TDist}, T::Type{<:AbstractFloat}, df = one(T))
+        d = Distributions.GenericMvTDist{T}(convert(T, df))
+        GenericUvProposalDist(d)
+    end

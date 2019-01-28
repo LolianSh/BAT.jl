@@ -25,7 +25,7 @@ algorithm = MultiTryMethod(MvTDistProposalSpec(1.0), 10, true)
 
 
 
-tdist = MvNormal(PDMat([1.0 1.5; 1.5 4.0]))
+tdist = MvNormal(PDMat([2.3 1.5; 1.5 5.7]))
 density = MvDistDensity(tdist)
 #density = MvDistDensity(MvNormal([0., 0.], [1. 0.; 0. 1.]))
 
@@ -38,7 +38,7 @@ bounds = HyperRectBounds([-5, -8], [5, 8], reflective_bounds)
 
 
 λ = 0.5
-α = BAT.ClosedInterval(0.75, 0.99)
+α = BAT.ClosedInterval(0.35, 0.50)
 β = 1.5
 c = BAT.ClosedInterval(1e-4, 1e2)
 
@@ -54,7 +54,7 @@ data_tuned = Array{Bool}(1)
 chainspec = MCMCSpec(algorithm, density, bounds, AbstractRNGSeed())
 
 nsamples = 10^8
-max_nsteps = 2500
+max_nsteps = 25000
 nchains = 4
 
 #samples_mh, sampleids_mh, stats_mh = @time @inferred rand(
@@ -140,13 +140,15 @@ function show_hists()
 end
 
 
+#=
+samples_mh = rand(MCMCSpec(MetropolisHastings(), density), 500, 4);
+=#
 
-#samples_mh = rand(MCMCSpec(MetropolisHastings(), density), 500, 4);
-
-
-
+#=
 
 stephist(samples_mh.weight, yscale = :log10, label="weight", title = "Sample weight distribution", xlabel = "weight", ylabel = "n", size = (1024, 1024), bins = -0.5:1:20.5, markersize = 1)
 stephist(samples_mh.weight, yscale = :log10, label="weight", title = "Sample weight distribution", xlabel = "weight", ylabel = "n", size = (1024, 1024), bins = 0:0.1:10, markersize = 1)
 
 plot(fit(Histogram, samples_mh.params[1, :], Weights(samples_mh.weight), closed = :left, nbins = 50), st = :step, markersize = 1)
+
+=#
