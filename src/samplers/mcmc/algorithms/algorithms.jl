@@ -2,3 +2,4 @@
 
 include("mh_sampler.jl")
 include("mh_tuner.jl")
+include("MTM_sampler.jl")
