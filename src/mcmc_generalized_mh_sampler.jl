@@ -292,7 +292,7 @@ function mcmc_step!(
     end
 
     @assert sum(P_T_inbounds) ≈ 1
-    @assert all(x -> x >= 0, P_T_inbounds)
+    @assert all(x -> x >= 0., P_T_inbounds)
 
     currsmpl_weight = weights[current_sample_idx]
     fill!(weights, 0)

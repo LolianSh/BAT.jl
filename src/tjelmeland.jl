@@ -43,7 +43,7 @@ place).
 function _tjl_multipropT2!(P_T2::AbstractVector{<:AbstractFloat}, P_T1::AbstractVector{<:AbstractFloat})
     idxs = eachindex(P_T2)
     idxs != eachindex(P_T1) && throw(ArgumentError("P_T2 and P_T1 must have the same indices"))
-    any(x -> x < 0, P_T1) && throw(ArgumentError("All values in P_T1 must be positive"))
+    any(x -> x < 0., P_T1) && throw(ArgumentError("All values in P_T1 must be positive"))
     !(sum(P_T1) ≈ 1) && throw(ArgumentError("Sum of P_T1 must be one"))
 
     # Construct initial P matrix
